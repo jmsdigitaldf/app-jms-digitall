@@ -18,9 +18,9 @@ FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/backend
 
-# Copiar package.json da raiz e do backend
-COPY package.json package-lock.json ./
-COPY backend/package.json backend/package-lock.json ./backend/
+# Copiar apenas os arquivos que existem
+COPY package.json pnpm-lock.yaml ./
+COPY backend/package.json backend/pnpm-lock.yaml ./
 COPY backend/ ./
 
 # Instalar dependências
@@ -38,8 +38,8 @@ ENV PORT=3000
 WORKDIR /app
 
 # Instalar apenas dependências de produção
-COPY package.json package-lock.json ./
-COPY backend/package.json backend/package-lock.json ./backend/
+COPY package.json pnpm-lock.yaml ./
+COPY backend/package.json backend/pnpm-lock.yaml ./backend/
 
 RUN npm ci --only=production
 
