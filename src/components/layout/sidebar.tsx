@@ -21,7 +21,7 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center">
             <Wrench className="w-5 h-5 text-white" />
           </div>
-          <span className="text-lg font-bold text-gray-900">JMS Digital</span>
+          <span className="text-lg font-bold text-gray-900">JMS Digitall</span>
         </Link>
       </div>
 

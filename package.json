@@ -6,7 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "npm run build",
+    "build:all": "npm run build:backend && npm run build:frontend",
+    "build:single-service": "npm run build:all && echo '✅ Build complete for single service deployment'",
+    "start": "cd backend && npm start",
+    "start:production": "cd backend && node dist/server.js",
+    "db:seed": "cd backend && npm run db:seed",
+    "db:push": "cd backend && npm run db:push"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.6.0",

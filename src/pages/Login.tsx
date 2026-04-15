@@ -63,7 +63,7 @@ export function Login() {
               <Wrench className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">JMS Digital CRM</CardTitle>
+          <CardTitle className="text-2xl font-bold">JMS Digitall</CardTitle>
           <CardDescription>Entre com suas credenciais para acessar o sistema</CardDescription>
         </CardHeader>
         <CardContent>
