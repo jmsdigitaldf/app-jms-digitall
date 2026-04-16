@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+  CUSTOMER
+}
+
+enum ProblemType {
+  HARDWARE
+  SOFTWARE
+  NETWORK
+  PRINTER
+  OTHER
+}
+
+enum DeviceType {
+  DESKTOP
+  LAPTOP
+  TABLET
+  SMARTPHONE
+  PRINTER
+  ROUTER
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum QuoteStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      UserRole @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String   @unique
+  document  String?  // CPF or CNPJ
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tickets Ticket[]
+}
+
+model Ticket {
+  id             String        @id @default(cuid())
+  protocol       String        @unique
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  whatsappMessage String?
+  problemType    ProblemType
+  deviceType     DeviceType
+  brand          String
+  model          String
+  priority       Priority
+  status         TicketStatus  @default(OPEN)
+  description    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  quotes Quote[]
+}
+
+model Quote {
+  id          String       @id @default(cuid())
+  ticketId    String
+  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  serviceName String
+  description String?
+  price       Float
+  status      QuoteStatus  @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Service {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  description   String?
+  priceMin      Float
+  priceMax      Float
+  estimatedTime String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

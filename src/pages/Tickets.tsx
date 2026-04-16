@@ -1,17 +1,51 @@
-import { useState } from 'react';
-import { Search, Plus, Wrench } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useDataStore } from '@/stores';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ticketsAPI } from '@/services/api';
 import { formatDateTime, getStatusColor, getStatusLabel, getPriorityColor, getPriorityLabel, getProblemTypeLabel } from '@/lib/utils';
+import TicketForm from '@/components/ticket-form';
+import type { Ticket } from '@/types';
 
 export function Tickets() {
-  const { tickets } = useDataStore();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Carregar tickets do banco
+  const loadTickets = async () => {
+    try {
+      setIsLoading(true);
+      const response = await ticketsAPI.getAll();
+      setTickets(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar atendimentos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTickets();
+  }, []);
+
+  const handleDeleteTicket = async (id: string) => {
+    try {
+      await ticketsAPI.delete(id);
+      await loadTickets();
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Erro ao deletar atendimento:', error);
+    }
+  };
 
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch = ticket.customer.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -27,7 +61,7 @@ export function Tickets() {
           <h1 className="text-3xl font-bold text-gray-900">Atendimentos</h1>
           <p className="text-gray-500 mt-1">Gerencie todos os atendimentos</p>
         </div>
-        <Button className="bg-gradient-to-r from-brand-primary to-brand-secondary">
+        <Button className="bg-gradient-to-r from-brand-primary to-brand-secondary" onClick={() => { setEditingTicket(null); setIsCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Atendimento
         </Button>
@@ -67,12 +101,13 @@ export function Tickets() {
                 <TableHead>Prioridade</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTickets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     Nenhum atendimento encontrado
                   </TableCell>
                 </TableRow>
@@ -90,6 +125,14 @@ export function Tickets() {
                     <TableCell><Badge className={getPriorityColor(ticket.priority)}>{getPriorityLabel(ticket.priority)}</Badge></TableCell>
                     <TableCell><Badge className={getStatusColor(ticket.status)}>{getStatusLabel(ticket.status)}</Badge></TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDateTime(ticket.createdAt)}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingTicket(ticket)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDeleteConfirm(ticket.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -97,6 +140,41 @@ export function Tickets() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Create/Edit Dialog */}
+      <TicketForm
+        ticket={editingTicket}
+        isOpen={isCreateOpen || !!editingTicket}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreateOpen(false);
+            setEditingTicket(null);
+          }
+        }}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Deletar Atendimento</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja deletar este atendimento? Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel onClick={() => setDeleteConfirm(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (deleteConfirm) {
+                  handleDeleteTicket(deleteConfirm);
+                }
+              }}
+            >
+              Deletar
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Ticket, Users, CheckCircle, DollarSign, Clock, TrendingUp, Wrench } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useDataStore } from '@/stores';
+import { ticketsAPI, customersAPI } from '@/services/api';
 import { formatCurrency, getStatusColor, getStatusLabel } from '@/lib/utils';
 
 function MetricCard({ title, value, change, trend, icon: Icon, color }: any) {
@@ -27,8 +28,53 @@ function MetricCard({ title, value, change, trend, icon: Icon, color }: any) {
 }
 
 export function Dashboard() {
-  const { tickets, customers, getTicketStats } = useDataStore();
-  const stats = getTicketStats();
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadTickets = async () => {
+    try {
+      const response = await ticketsAPI.getAll();
+      setTickets(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar atendimentos:', error);
+    }
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const response = await customersAPI.getAll();
+      setCustomers(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        await Promise.all([loadTickets(), loadCustomers()]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Calcular stats baseado nos tickets
+  const stats = {
+    total: tickets.length,
+    inProgress: tickets.filter(t => t.status === 'IN_PROGRESS').length,
+    completed: tickets.filter(t => t.status === 'COMPLETED').length,
+    revenue: tickets
+      .filter(t => t.status === 'COMPLETED' && t.quotes?.length > 0)
+      .reduce((acc, t) => acc + (t.quotes?.[0]?.price || 0), 0),
+    today: tickets.filter(t => {
+      const today = new Date().toDateString();
+      return new Date(t.createdAt).toDateString() === today;
+    }).length,
+  };
 
   const recentTickets = tickets.slice(0, 5);
 
