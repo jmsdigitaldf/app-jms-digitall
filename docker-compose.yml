@@ -7,13 +7,13 @@ services:
     container_name: jms_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: jms_digitall
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-jms_digitall}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,16 +29,13 @@ services:
     restart: always
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/jms_digitall
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-jms_digitall}
       PORT: 3000
     depends_on:
       db:
         condition: service_healthy
     networks:
       - jms_network
-    # Expõe a porta apenas internamente na rede do Docker, ou mapeie se precisar acessar a API diretamente de fora
-    # ports:
-    #   - "3000:3000"
 
   # Frontend Web
   frontend:
@@ -48,9 +45,9 @@ services:
     container_name: jms_frontend
     restart: always
     environment:
-      VITE_API_URL: http://localhost:3000/api # Ajuste conforme necessário para produção
+      VITE_API_URL: http://localhost:3000/api
     ports:
-      - "80:80" # Acessível na porta 80 do servidor
+      - "80:80"
     depends_on:
       - backend
     networks:
