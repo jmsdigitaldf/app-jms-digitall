@@ -1,66 +1,37 @@
-# ============ STAGE 1: Build Frontend ============
-FROM node:20-alpine AS frontend-builder
-
-WORKDIR /app/frontend
-
-# Copiar package.json e pnpm-lock.yaml
-COPY package.json pnpm-lock.yaml ./
-COPY frontend/ ./
-
-# Instalar dependências com npm ci (determinístico para CI/CD)
-RUN npm ci
-
-# Build do Vite
-RUN npm run build
-
-# ============ STAGE 2: Build Backend ============
-FROM node:20-alpine AS backend-builder
-
-WORKDIR /app/backend
-
-# Copiar apenas os arquivos que existem
-COPY package.json pnpm-lock.yaml ./
-COPY backend/package.json backend/pnpm-lock.yaml ./
-COPY backend/ ./
-
-# Instalar dependências
-RUN npm ci
-
-# Build TypeScript backend
-RUN npm run build
-
-# ============ STAGE 3: Runtime ============
-FROM node:20-alpine
-
-ENV NODE_ENV=production
-ENV PORT=3000
+# Etapa 1: Build da aplicação
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Instalar apenas dependências de produção
-COPY package.json pnpm-lock.yaml ./
-COPY backend/package.json backend/pnpm-lock.yaml ./backend/
+# Copia os arquivos de package para instalar dependências
+COPY package.json package-lock.json ./
 
-RUN npm ci --only=production
+# Instala todas as dependências (incluindo devDependencies necessárias para o build)
+RUN npm ci
 
-# Copiar backend compilado
-COPY --from=backend-builder /app/backend/dist ./backend/dist
-COPY --from=backend-builder /app/backend/src ./backend/src
-COPY backend/.env* ./backend/
+# Copia todo o código fonte
+COPY . .
 
-# Copiar frontend compilado (dist) para ser servido pelo backend
-COPY --from=frontend-builder /app/frontend/dist ./backend/public
+# Executa o build do projeto
+RUN npm run build
 
-# Se houver prisma schema
-COPY backend/prisma ./backend/prisma/
+# Etapa 2: Servidor de produção (imagem leve)
+FROM node:20-alpine
 
-# Expo rtar porta
+WORKDIR /app
+
+# Instala o 'serve' para servir arquivos estáticos
+RUN npm install -g serve@latest
+
+# Copia apenas a pasta dist gerada na etapa de build
+COPY --from=builder /app/dist ./dist
+
+# Expõe a porta 3000
 EXPOSE 3000
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+# Health check para verificar se o app está rodando
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Iniciar aplicação
-WORKDIR /app/backend
-CMD ["node", "dist/server.js"]
+# Comando para iniciar o servidor
+CMD ["serve", "-s", "dist", "-l", "3000"]
